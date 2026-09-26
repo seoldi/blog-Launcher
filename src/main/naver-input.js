@@ -1,6 +1,7 @@
 'use strict'
 const { clipboard, nativeImage } = require('electron')
 const { existsSync } = require('fs')
+const path = require('path')
 
 const SLEEP = ms => new Promise(r => setTimeout(r, ms))
 
@@ -12,7 +13,7 @@ class NaverInput {
 
   async run(draft, imagePaths = []) {
     const { titles, body, tags } = draft
-    const title = Array.isArray(titles) ? titles[0] : titles
+    const title = draft.title || (Array.isArray(titles) ? titles[0] : titles)
 
     this.log('log', { level: 'info', msg: '에디터 프레임 탐색 중...' })
     const frames = await this._findEditorFrames()
@@ -22,12 +23,12 @@ class NaverInput {
     await this._inputTitle(frames, title)
     await SLEEP(400)
 
-    const paras    = body.split(/\n+/).map(p => p.trim()).filter(Boolean)
+    const paras    = body.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
     const introPara = paras[0] ?? ''
     const closePara = paras.length > 1 ? paras[paras.length - 1] : ''
     const midParas  = paras.length > 2 ? paras.slice(1, -1) : []
 
-    await this._enterBody(frames)
+    await this._focusBody(frames)
     if (introPara) {
       await this._typeInBody(frames, introPara)
       await SLEEP(200)
@@ -36,7 +37,7 @@ class NaverInput {
     const maxMid = Math.max(imagePaths.length, midParas.length)
     for (let i = 0; i < maxMid; i++) {
       if (imagePaths[i]) {
-        this.log('log', { level: 'info', msg: `이미지 삽입 중: ${imagePaths[i].split('\\').pop()}` })
+        this.log('log', { level: 'info', msg: `이미지 삽입 중: ${path.basename(imagePaths[i])}` })
         await this._insertImage(frames, imagePaths[i])
         await SLEEP(1200)
         this.log('log', { level: 'ok', msg: '  이미지 ✓' })
@@ -108,6 +109,11 @@ class NaverInput {
     }, title)
     await SLEEP(100)
     await titleFrame.keyboard.type(title, { delay: 10 })
+  }
+
+  async _focusBody({ bodyFrame }) {
+    await bodyFrame.focus('body')
+    await SLEEP(200)
   }
 
   async _enterBody({ bodyFrame }) {

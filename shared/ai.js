@@ -19,12 +19,12 @@ function buildExBlock(examples) {
 }
 
 async function callGemini(apiKey, model, parts, { useGrounding = false } = {}) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const body = { contents: [{ parts }] };
   if (useGrounding) body.tools = [{ googleSearch: {} }];
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify(body),
   });
   if (!res.ok) {

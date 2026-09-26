@@ -93,7 +93,7 @@ function addFiles(files) {
   for (const file of files) {
     const reader = new FileReader()
     reader.onload = e => {
-      selectedImages.push({ path: file.path, name: file.name, dataUrl: e.target.result })
+      selectedImages.push({ path: window.api.getPathForFile(file), name: file.name, dataUrl: e.target.result })
       renderImageList()
     }
     reader.readAsDataURL(file)
@@ -105,11 +105,17 @@ function renderImageList() {
   selectedImages.forEach((img, i) => {
     const div = document.createElement('div')
     div.className = 'image-item'
-    div.innerHTML = `
-      <img src="${img.dataUrl}" alt="${img.name}" />
-      <span class="order">${i + 1}</span>
-      <button class="remove" data-i="${i}">✕</button>
-    `
+    const thumb = document.createElement('img')
+    thumb.src = img.dataUrl
+    thumb.alt = img.name
+    const order = document.createElement('span')
+    order.className = 'order'
+    order.textContent = i + 1
+    const remove = document.createElement('button')
+    remove.className = 'remove'
+    remove.dataset.i = i
+    remove.textContent = '✕'
+    div.append(thumb, order, remove)
     imageList.appendChild(div)
   })
   imageList.querySelectorAll('.remove').forEach(btn => {
@@ -134,7 +140,12 @@ function renderKwTags() {
   kwTags.forEach((tag, i) => {
     const el = document.createElement('span')
     el.className = 'kw-tag'
-    el.innerHTML = `${tag}<button class="kw-tag-remove" data-i="${i}" type="button">×</button>`
+    const remove = document.createElement('button')
+    remove.className = 'kw-tag-remove'
+    remove.dataset.i = i
+    remove.type = 'button'
+    remove.textContent = '×'
+    el.append(tag, remove)
     kwTagWrap.insertBefore(el, kwTagInput)
   })
   kwTagCount.textContent = `${kwTags.length}/10`
@@ -222,6 +233,7 @@ genBtn.addEventListener('click', async () => {
       apiKey, model, images,
       keyword,
       highlights: document.getElementById('highlights').value.trim(),
+      useGrounding: document.getElementById('use-grounding').checked,
       profile,
       placeInfo: profile === 'local' ? placeInfo : null,
     })
@@ -245,15 +257,25 @@ function renderDraftResult() {
   draft.titles.forEach((t, i) => {
     const div = document.createElement('div')
     div.className = 'title-option' + (i === 0 ? ' selected' : '')
-    div.innerHTML = `<input type="radio" name="title" value="${i}" ${i===0?'checked':''}> <span>${t}</span>`
-    div.querySelector('input').addEventListener('change', () => {
+    const radio = document.createElement('input')
+    radio.type = 'radio'
+    radio.name = 'title'
+    radio.value = i
+    radio.checked = i === 0
+    const label = document.createElement('span')
+    label.textContent = t
+    div.append(radio, ' ', label)
+    radio.addEventListener('change', () => {
       document.querySelectorAll('.title-option').forEach(el => el.classList.remove('selected'))
       div.classList.add('selected')
+      updateInputPreview()
     })
     titleList.appendChild(div)
   })
 
-  document.getElementById('draft-body').value = draft.body
+  document.getElementById('draft-body').value = draft.footer
+    ? `${draft.body}\n\n${draft.footer}`
+    : draft.body
 
   const tagList = document.getElementById('tag-list')
   tagList.innerHTML = ''
@@ -296,12 +318,17 @@ function updateInputPreview() {
   const title = draft.titles[titleIdx]
   const body  = document.getElementById('draft-body').value
 
-  preview.innerHTML = `
-    <div class="preview-title">${title}</div>
-    <div class="preview-body">${body}</div>
-  `
+  const titleEl = document.createElement('div')
+  titleEl.className = 'preview-title'
+  titleEl.textContent = title
+  const bodyEl = document.createElement('div')
+  bodyEl.className = 'preview-body'
+  bodyEl.textContent = body
+  preview.replaceChildren(titleEl, bodyEl)
   inputBtn.disabled = false
 }
+
+document.getElementById('draft-body').addEventListener('input', updateInputPreview)
 
 // ── 실제 입력 실행 ────────────────────────────────────────────────
 
@@ -333,6 +360,7 @@ inputBtn.addEventListener('click', async () => {
   const titleIdx = +(document.querySelector('input[name="title"]:checked')?.value ?? 0)
 
   const finalDraft = {
+    title: draft.titles[titleIdx],
     titles: draft.titles,
     body: document.getElementById('draft-body').value,
     tags: draft.tags ?? [],
