@@ -111,7 +111,7 @@ class NaverInput {
   }
 
   async _enterBody({ bodyFrame }) {
-    await bodyFrame.focus('body')
+    await bodyFrame.click('body')
     await this.page.keyboard.press('Enter')
     await SLEEP(200)
   }
@@ -146,12 +146,12 @@ class NaverInput {
     clipboard.writeImage(ni)
     await SLEEP(200)
 
-    await bodyFrame.focus('body')
-    await SLEEP(100)
+    await bodyFrame.click('body')
+    await SLEEP(200)
     await this.page.keyboard.down('Control')
     await this.page.keyboard.press('v')
     await this.page.keyboard.up('Control')
-    await SLEEP(800)
+    await SLEEP(1500)
   }
 
   async _inputTags(tags) {

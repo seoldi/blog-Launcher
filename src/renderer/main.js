@@ -3,6 +3,7 @@ import { generateDraft, extractPlaceInfo } from '../../shared/ai.js'
 // ── 설정 로드/저장 ──────────────────────────────────────────────
 
 const STORAGE_KEY = 'blog-launcher-settings'
+const VAULT_KEY   = 'blog-launcher-vault'
 
 function loadSettings() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') } catch { return {} }
@@ -264,8 +265,75 @@ function renderDraftResult() {
     tagList.appendChild(chip)
   })
 
+  saveToVault(draft)
   updateInputPreview()
 }
+
+// ── 보관함 ───────────────────────────────────────────────────────
+
+function loadVault() {
+  try { return JSON.parse(localStorage.getItem(VAULT_KEY) ?? '[]') } catch { return [] }
+}
+
+function saveToVault(item) {
+  const vault = loadVault()
+  vault.unshift({
+    id: Date.now(),
+    date: new Date().toLocaleString('ko-KR'),
+    titles: item.titles ?? [],
+    body:   item.body  ?? '',
+    tags:   item.tags  ?? [],
+  })
+  localStorage.setItem(VAULT_KEY, JSON.stringify(vault.slice(0, 50)))
+  renderVault()
+}
+
+function renderVault() {
+  const vault = loadVault()
+  const list  = document.getElementById('vault-list')
+  if (!vault.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📁</div>
+        <div class="text">저장된 초안이 없습니다</div>
+        <div class="sub">AI 초안 생성 시 자동 저장됩니다</div>
+      </div>`
+    return
+  }
+  list.innerHTML = vault.map(item => `
+    <div class="vault-item" data-id="${item.id}">
+      <div class="vault-item-header">
+        <div class="vault-item-title">${item.titles?.[0] ?? '제목 없음'}</div>
+        <div class="vault-item-date">${item.date}</div>
+      </div>
+      <div class="vault-item-body">${item.body.slice(0, 120)}…</div>
+      <div class="vault-item-footer">
+        <button class="btn-vault-load" data-id="${item.id}">불러오기</button>
+        <button class="btn-vault-del" data-id="${item.id}">삭제</button>
+      </div>
+    </div>
+  `).join('')
+
+  list.querySelectorAll('.btn-vault-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const updated = loadVault().filter(v => v.id !== +btn.dataset.id)
+      localStorage.setItem(VAULT_KEY, JSON.stringify(updated))
+      renderVault()
+    })
+  })
+
+  list.querySelectorAll('.btn-vault-load').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = loadVault().find(v => v.id === +btn.dataset.id)
+      if (!item) return
+      draft = item
+      renderDraftResult()
+      document.querySelector('.tab-btn[data-tab="photo"]').click()
+    })
+  })
+}
+
+renderVault()
 
 // ── 초기화 버튼 ──────────────────────────────────────────────────
 

@@ -589,5 +589,66 @@ body {
 
 .saved-msg { color: var(--success); font-size: 12px; margin-top: 8px; }
 
+/* ── 보관함 아이템 ── */
+.vault-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.vault-item-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.vault-item-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.4;
+}
+.vault-item-date {
+  font-size: 10px;
+  color: var(--sub);
+  flex-shrink: 0;
+}
+.vault-item-body {
+  font-size: 11px;
+  color: var(--sub);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+.vault-item-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.btn-vault-load {
+  background: var(--peri-lt);
+  border: 1px solid var(--peri);
+  color: var(--royal);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.btn-vault-load:hover { background: var(--peri); }
+.btn-vault-del {
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: var(--sub);
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: var(--font);
+}
+.btn-vault-del:hover { color: var(--error); background: #fef2f2; }
+
 /* ── 유틸 ── */
 .hidden { display: none !important; }
