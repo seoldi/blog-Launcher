@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>블로그 작업대</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+
+  <!-- ── 헤더 ── -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="header-title">블로그 작업대</div>
+      <div class="header-sub">키워드 분석 · AI 초안 · 에디터 자동 입력</div>
+    </div>
+    <span class="badge" id="badge-gemini">● Gemini 키 없음</span>
+    <div class="browser-ctrl">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text" class="status-text">꺼짐</span>
+      <button id="browser-toggle" class="btn-header">켜기</button>
+    </div>
+  </header>
+
+  <!-- ── 탭 내비 ── -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="photo">초안</button>
+    <button class="tab-btn" data-tab="editor">에디터</button>
+    <button class="tab-btn" data-tab="vault">보관함</button>
+    <button class="tab-btn" data-tab="keyword">키워드</button>
+    <button class="tab-btn" data-tab="settings">설정</button>
+  </nav>
+
+  <!-- ─────────────────────────────────────────────────────
+     ① 초안 탭
+  ───────────────────────────────────────────────────── -->
+  <section class="tab-content active" data-tab="photo">
+    <div class="photo-grid">
+
+      <!-- 왼쪽: 입력 -->
+      <div class="photo-left">
+
+        <!-- 프로파일 -->
+        <div class="profile-switcher">
+          <button class="profile-btn active" data-profile="seoldi">설디그래픽스</button>
+          <button class="profile-btn" data-profile="income">수익형</button>
+          <button class="profile-btn" data-profile="local">장소·맛집</button>
+        </div>
+        <input type="hidden" id="profile" value="seoldi">
+
+        <!-- 장소·맛집 URL (local 프로파일 시만 표시) -->
+        <div id="local-url-group" class="url-section hidden">
+          <div class="field-gap">
+            <label class="field-label">네이버 장소 URL</label>
+            <div class="url-bar">
+              <input class="field-input" id="place-url" placeholder="https://m.place.naver.com/...">
+              <button class="btn btn-ghost" id="load-place-btn">불러오기</button>
+            </div>
+            <div id="place-info-preview" class="info-preview hidden"></div>
+          </div>
+        </div>
+
+        <!-- 드롭존 -->
+        <div class="drop-zone" id="image-drop">
+          <input type="file" id="image-input" multiple accept="image/*" hidden>
+          📷 클릭하거나 사진을 끌어다 놓으세요<br>최대 10장
+        </div>
+        <div id="image-list" class="thumb-row"></div>
+
+        <!-- 핵심 키워드 (태그 입력) -->
+        <div class="field-gap">
+          <label class="field-label">
+            핵심 키워드
+            <span id="kw-tag-count" class="kw-tag-count">0/10</span>
+          </label>
+          <div class="kw-tag-wrap" id="kw-tag-wrap">
+            <input class="kw-tag-input" id="kw-tag-input" placeholder="입력 후 Enter 또는 Space">
+          </div>
+          <input type="hidden" id="keyword">
+        </div>
+
+        <!-- 최신 검색정보 활용 -->
+        <div class="field-gap">
+          <label class="hl-check">
+            <input type="checkbox" id="use-grounding">
+            최신 검색정보 활용
+          </label>
+          <div class="grounding-sub">Google Search 연동 — 관련 최신 정보를 자동 반영합니다</div>
+        </div>
+
+        <!-- 강조 포인트 -->
+        <div class="field-gap">
+          <label class="field-label">
+            강조 포인트
+            <span class="field-label-opt">(선택)</span>
+          </label>
+          <textarea class="field-textarea" id="highlights" rows="3"
+            placeholder="예: 반응형 구현&#10;3단계 UX 개선&#10;모바일 최적화"></textarea>
+        </div>
+
+        <div class="action-row">
+          <button class="btn btn-ghost" id="reset-btn">↺ 초기화</button>
+          <button class="btn btn-orange" id="gen-btn" style="flex:1">✨ AI 초안 생성</button>
+        </div>
+
+      </div><!-- /photo-left -->
+
+      <!-- 오른쪽: 결과 -->
+      <div class="photo-right" id="photo-result">
+
+        <div id="draft-empty" class="empty-state">
+          <div class="icon">✨</div>
+          <div class="text">사진과 키워드를 입력하고<br>AI 초안 생성을 눌러주세요</div>
+          <div class="sub">제목 후보 · 본문 초안 · 태그가 자동 생성됩니다</div>
+        </div>
+
+        <div id="draft-result" class="draft-result hidden">
+          <div class="result-section">
+            <div class="result-section-title">제목 후보</div>
+            <div id="title-list"></div>
+          </div>
+          <div class="result-section">
+            <div class="result-section-title">본문</div>
+            <textarea id="draft-body" class="field-textarea body-box"></textarea>
+          </div>
+          <div class="result-section">
+            <div class="result-section-title">태그</div>
+            <div id="tag-list" class="tag-row"></div>
+          </div>
+          <button class="btn btn-primary btn-full" id="to-input-btn">▶ 에디터에 입력하기</button>
+        </div>
+
+      </div><!-- /photo-right -->
+
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────
+     ② 에디터 탭
+  ───────────────────────────────────────────────────── -->
+  <section class="tab-content" data-tab="editor">
+    <div class="scroll-wrap">
+      <div class="field-gap">
+        <label class="field-label">Naver Blog ID</label>
+        <input class="field-input" id="blog-id-input" placeholder="예: seoldi">
+      </div>
+      <div id="input-preview" class="preview-card">
+        <p class="empty-hint">← 초안 탭에서 먼저 초안을 생성하세요</p>
+      </div>
+      <button class="btn btn-primary btn-full" id="input-btn" disabled>▶ 에디터에 입력 시작</button>
+      <div class="log-panel">
+        <div class="log-header">
+          <span>진행 로그</span>
+          <button class="btn-ghost-sm" id="clear-log-btn">지우기</button>
+        </div>
+        <div id="log-output" class="log-output">대기 중...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────
+     ③ 보관함 탭
+  ───────────────────────────────────────────────────── -->
+  <section class="tab-content" data-tab="vault">
+    <div class="scroll-wrap" id="vault-list">
+      <div class="empty-state">
+        <div class="icon">📁</div>
+        <div class="text">저장된 초안이 없습니다</div>
+        <div class="sub">AI 초안 생성 시 자동 저장됩니다</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────
+     ④ 키워드 탭
+  ───────────────────────────────────────────────────── -->
+  <section class="tab-content" data-tab="keyword">
+    <div class="scroll-wrap">
+      <div class="kw-bar">
+        <input class="field-input" id="kw-input" placeholder="예: 창원 UI리뉴얼">
+        <button class="btn btn-primary" id="kw-btn">분석</button>
+      </div>
+      <div id="kw-result">
+        <div class="empty-state">
+          <div class="icon">🔍</div>
+          <div class="text">키워드를 입력하고 분석 버튼을 누르세요</div>
+          <div class="sub">경쟁도 · 월 검색량 · 연관 키워드 · 전략 팁</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────
+     ⑤ 설정 탭
+  ───────────────────────────────────────────────────── -->
+  <section class="tab-content" data-tab="settings">
+    <div class="scroll-wrap">
+      <div class="setting-section">
+        <div class="setting-section-title">🤖 AI 설정</div>
+        <div class="setting-row">
+          <label>Gemini API Key</label>
+          <input class="field-input" type="password" id="cfg-api-key" placeholder="AIza...">
+        </div>
+        <div class="setting-row">
+          <label>모델</label>
+          <select class="field-select" id="cfg-model">
+            <option value="gemini-2.5-flash">gemini-2.5-flash (권장)</option>
+            <option value="gemini-2.5-flash-lite-preview-06-17">gemini-2.5-flash-lite</option>
+            <option value="gemini-2.5-pro">gemini-2.5-pro (최고 품질)</option>
+            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash (레거시)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">🌐 브라우저 설정</div>
+        <div class="setting-row">
+          <label>Naver Blog ID</label>
+          <input class="field-input" id="cfg-blog-id" placeholder="seoldi">
+        </div>
+        <div class="setting-row">
+          <label>Chrome 경로</label>
+          <input class="field-input" id="cfg-chrome-path" placeholder="C:\Program Files\Google\Chrome\Application\chrome.exe">
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="save-settings-btn">설정 저장</button>
+      <p id="settings-saved" class="saved-msg hidden">저장됨 ✓</p>
+    </div>
+  </section>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

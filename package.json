@@ -1,0 +1,16 @@
+{
+  "name": "blog-launcher",
+  "version": "0.1.0",
+  "description": "설디 블로그 자동화 런처",
+  "main": "src/main/index.js",
+  "scripts": {
+    "dev": "node launch.js --inspect",
+    "start": "node launch.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^22.15.0"
+  },
+  "devDependencies": {
+    "electron": "^32.1.0"
+  }
+}

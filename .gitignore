@@ -1,0 +1,13 @@
+node_modules/
+dist/
+out/
+.vite/
+
+# 테스트/임시 파일
+__*.js
+__*.txt
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
