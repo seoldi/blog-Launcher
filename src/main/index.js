@@ -9,10 +9,12 @@ let mainWindow
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 960,
-    height: 720,
-    minWidth: 800,
+    width: 680,
+    height: 1300,
+    minWidth: 680,
     minHeight: 600,
+    x: 0,
+    y: 0,
     backgroundColor: '#F5F0E8',
     title: '설디 블로그 런처',
     webPreferences: {
