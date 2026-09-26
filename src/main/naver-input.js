@@ -107,12 +107,12 @@ class NaverInput {
       sel.addRange(range)
     }, title)
     await SLEEP(100)
-    await titleFrame.keyboard.type(title, { delay: 10 })
+    await this.page.keyboard.type(title, { delay: 10 })
   }
 
   async _enterBody({ bodyFrame }) {
     await bodyFrame.focus('body')
-    await bodyFrame.keyboard.press('Enter')
+    await this.page.keyboard.press('Enter')
     await SLEEP(200)
   }
 
@@ -122,17 +122,17 @@ class NaverInput {
       if (!part) continue
       if (part.startsWith('**') && part.endsWith('**')) {
         const bold = part.slice(2, -2)
-        await bodyFrame.keyboard.down('Control')
-        await bodyFrame.keyboard.press('b')
-        await bodyFrame.keyboard.up('Control')
+        await this.page.keyboard.down('Control')
+        await this.page.keyboard.press('b')
+        await this.page.keyboard.up('Control')
         await SLEEP(50)
-        await bodyFrame.keyboard.type(bold, { delay: 8 })
-        await bodyFrame.keyboard.down('Control')
-        await bodyFrame.keyboard.press('b')
-        await bodyFrame.keyboard.up('Control')
+        await this.page.keyboard.type(bold, { delay: 8 })
+        await this.page.keyboard.down('Control')
+        await this.page.keyboard.press('b')
+        await this.page.keyboard.up('Control')
         await SLEEP(50)
       } else {
-        await bodyFrame.keyboard.type(part, { delay: 8 })
+        await this.page.keyboard.type(part, { delay: 8 })
       }
     }
   }
@@ -148,9 +148,9 @@ class NaverInput {
 
     await bodyFrame.focus('body')
     await SLEEP(100)
-    await bodyFrame.keyboard.down('Control')
-    await bodyFrame.keyboard.press('v')
-    await bodyFrame.keyboard.up('Control')
+    await this.page.keyboard.down('Control')
+    await this.page.keyboard.press('v')
+    await this.page.keyboard.up('Control')
     await SLEEP(800)
   }
 
