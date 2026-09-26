@@ -412,7 +412,7 @@ inputBtn.addEventListener('click', async () => {
   const res = await window.api.inputContent({
     blogId,
     draft: finalDraft,
-    imagePaths: selectedImages.map(img => img.path),
+    imagePaths: selectedImages.map(img => img.dataUrl),
   })
 
   inputBtn.disabled = false

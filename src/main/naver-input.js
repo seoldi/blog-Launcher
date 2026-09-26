@@ -1,6 +1,5 @@
 'use strict'
 const { clipboard, nativeImage } = require('electron')
-const { existsSync } = require('fs')
 
 const SLEEP = ms => new Promise(r => setTimeout(r, ms))
 
@@ -100,20 +99,12 @@ class NaverInput {
   }
 
   async _inputTitle({ titleFrame }, title) {
-    await titleFrame.evaluate(() => {
-      const el = document.querySelector('.se-title-text') ||
-                 document.querySelector('[data-ce-name="title"]')
-      if (!el) throw new Error('제목 요소 없음')
-      el.click()
-      el.focus()
-      const sel = window.getSelection()
-      const range = document.createRange()
-      range.selectNodeContents(el)
-      sel.removeAllRanges()
-      sel.addRange(range)
-    })
+    const el = (await titleFrame.$('.se-title-text')) ||
+               (await titleFrame.$('[data-ce-name="title"]'))
+    if (!el) throw new Error('제목 요소 없음')
+    await el.click({ clickCount: 3 })  // 트리플클릭 → 기존 텍스트 전체 선택
     await SLEEP(100)
-    await this.page.keyboard.type(title, { delay: 10 })
+    await this.page.keyboard.type(title, { delay: 12 })
   }
 
   async _enterBody({ bodyFrame }) {
@@ -147,12 +138,18 @@ class NaverInput {
     }
   }
 
-  async _insertImage({ bodyFrame }, imagePath) {
-    if (!existsSync(imagePath)) {
-      this.log('log', { level: 'warn', msg: `이미지 파일 없음: ${imagePath}` })
+  async _insertImage({ bodyFrame }, imageData) {
+    if (!imageData) {
+      this.log('log', { level: 'warn', msg: '이미지 데이터 없음' })
       return
     }
-    const ni = nativeImage.createFromPath(imagePath)
+    const ni = imageData.startsWith('data:')
+      ? nativeImage.createFromDataURL(imageData)
+      : nativeImage.createFromPath(imageData)
+    if (ni.isEmpty()) {
+      this.log('log', { level: 'warn', msg: '이미지 로드 실패' })
+      return
+    }
     clipboard.writeImage(ni)
     await SLEEP(200)
 
