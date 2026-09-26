@@ -1,5 +1,5 @@
 'use strict'
-const { app, shell, BrowserWindow, ipcMain } = require('electron')
+const { app, screen, shell, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const { BrowserManager } = require('./browser.js')
 const { NaverInput } = require('./naver-input.js')
@@ -8,10 +8,11 @@ const browserMgr = new BrowserManager()
 let mainWindow
 
 function createWindow() {
+  const { height } = screen.getPrimaryDisplay().workAreaSize
   mainWindow = new BrowserWindow({
-    width: 680,
-    height: 1300,
-    minWidth: 680,
+    width: 630,
+    height,
+    minWidth: 630,
     minHeight: 600,
     x: 0,
     y: 0,
