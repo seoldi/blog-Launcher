@@ -95,23 +95,28 @@ class NaverInput {
   }
 
   async _inputTitle({ titleFrame }, title) {
-    await titleFrame.evaluate(text => {
+    await titleFrame.evaluate(() => {
       const el = document.querySelector('.se-title-text') ||
                  document.querySelector('[data-ce-name="title"]')
       if (!el) throw new Error('제목 요소 없음')
+      el.click()
       el.focus()
       const sel = window.getSelection()
       const range = document.createRange()
       range.selectNodeContents(el)
       sel.removeAllRanges()
       sel.addRange(range)
-    }, title)
+    })
     await SLEEP(100)
     await this.page.keyboard.type(title, { delay: 10 })
   }
 
   async _enterBody({ bodyFrame }) {
-    await bodyFrame.click('body')
+    await bodyFrame.evaluate(() => {
+      document.body.click()
+      document.body.focus()
+    })
+    await SLEEP(100)
     await this.page.keyboard.press('Enter')
     await SLEEP(200)
   }
@@ -146,7 +151,10 @@ class NaverInput {
     clipboard.writeImage(ni)
     await SLEEP(200)
 
-    await bodyFrame.click('body')
+    await bodyFrame.evaluate(() => {
+      document.body.click()
+      document.body.focus()
+    })
     await SLEEP(200)
     await this.page.keyboard.down('Control')
     await this.page.keyboard.press('v')
