@@ -22,35 +22,40 @@ class NaverInput {
     await this._inputTitle(frames, title)
     await SLEEP(400)
 
-    const paras    = body.split(/\n+/).map(p => p.trim()).filter(Boolean)
-    const introPara = paras[0] ?? ''
-    const closePara = paras.length > 1 ? paras[paras.length - 1] : ''
-    const midParas  = paras.length > 2 ? paras.slice(1, -1) : []
+    const paras = body.split(/\n+/).map(p => p.trim()).filter(Boolean)
+    const m     = imagePaths.length
+
+    // 이미지를 단락 사이에 균등 분배
+    // 이미지 i는 paras[floor((i+1)*n/(m+1))] 뒤에 삽입
+    const insertAfterPara = imagePaths.map((_, i) =>
+      Math.floor((i + 1) * paras.length / (m + 1))
+    )
 
     await this._enterBody(frames)
-    if (introPara) {
-      await this._typeInBody(frames, introPara)
-      await SLEEP(200)
-    }
 
-    const maxMid = Math.max(imagePaths.length, midParas.length)
-    for (let i = 0; i < maxMid; i++) {
-      if (imagePaths[i]) {
-        this.log('log', { level: 'info', msg: `이미지 삽입 중: ${imagePaths[i].split('\\').pop()}` })
-        await this._insertImage(frames, imagePaths[i])
-        await SLEEP(1200)
-        this.log('log', { level: 'ok', msg: '  이미지 ✓' })
-      }
-      if (midParas[i]) {
-        await this._enterBody(frames)
-        await this._typeInBody(frames, midParas[i])
+    if (paras.length > 0) {
+      for (let p = 0; p < paras.length; p++) {
+        if (p > 0) await this._enterBody(frames)
+        await this._typeInBody(frames, paras[p])
         await SLEEP(200)
-      }
-    }
 
-    if (closePara) {
-      await this._enterBody(frames)
-      await this._typeInBody(frames, closePara)
+        for (let i = 0; i < m; i++) {
+          if (insertAfterPara[i] === p) {
+            this.log('log', { level: 'info', msg: `이미지 삽입 중 (${i + 1}/${m})` })
+            await this._enterBody(frames)
+            await this._insertImage(frames, imagePaths[i])
+            this.log('log', { level: 'ok', msg: `  이미지 ${i + 1} ✓` })
+          }
+        }
+      }
+    } else {
+      // 본문 없이 이미지만 있는 경우
+      for (let i = 0; i < m; i++) {
+        this.log('log', { level: 'info', msg: `이미지 삽입 중 (${i + 1}/${m})` })
+        if (i > 0) await this._enterBody(frames)
+        await this._insertImage(frames, imagePaths[i])
+        this.log('log', { level: 'ok', msg: `  이미지 ${i + 1} ✓` })
+      }
     }
 
     if (tags?.length) {
