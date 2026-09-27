@@ -119,13 +119,34 @@ class NaverInput {
     await this.page.keyboard.type(title, { delay: 12 })
   }
 
+  // bodyFrame에 해당하는 iframe의 절대 좌표를 찾아 page.mouse.click()
+  // ElementHandle.click()은 v22 clickability 체크에 막히므로 이 방법 사용
+  async _focusBodyFrame(bodyFrame, ctx = this.page) {
+    const handles = await ctx.$$('iframe, frame').catch(() => [])
+    for (const handle of handles) {
+      try {
+        const frame = await handle.contentFrame()
+        if (!frame) continue
+        if (frame === bodyFrame) {
+          const box = await handle.boundingBox()
+          if (box) {
+            await this.page.mouse.click(box.x + 20, box.y + 20)
+            return true
+          }
+        }
+        if (await this._focusBodyFrame(bodyFrame, frame)) return true
+      } catch {}
+    }
+    return false
+  }
+
   async _goToBodyStart({ bodyFrame }) {
-    // ElementHandle.click()은 CDP 마우스 이벤트 → 키보드 포커스가 bodyFrame으로 이전됨
-    const bodyEl = await bodyFrame.$('body')
-    if (!bodyEl) throw new Error('본문 body 요소 없음')
-    await bodyEl.click({ offset: { x: 10, y: 10 } })  // 상단 근처 클릭
+    const clicked = await this._focusBodyFrame(bodyFrame)
+    if (!clicked) {
+      // fallback: JS 이벤트 (CDP 포커스 보장 안됨)
+      await bodyFrame.evaluate(() => { document.body.click(); document.body.focus() })
+    }
     await SLEEP(100)
-    // Ctrl+Home 으로 맨 앞 확정
     await this.page.keyboard.down('Control')
     await this.page.keyboard.press('Home')
     await this.page.keyboard.up('Control')
