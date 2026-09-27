@@ -67,6 +67,28 @@ class NaverInput {
     }
   }
 
+  // 모든 프레임(메인 + iframe)에서 텍스트로 요소를 찾아 클릭
+  async _clickByText(text, { timeout = 3000, exact = false } = {}) {
+    const deadline = Date.now() + timeout
+    while (Date.now() < deadline) {
+      for (const frame of this.page.frames()) {
+        const clicked = await frame.evaluate((txt, exactMatch) => {
+          const norm = s => s.trim().replace(/\s+/g, '')
+          const el = Array.from(document.querySelectorAll('button, [role="tab"], li, a, span, div, p'))
+            .find(e => exactMatch
+              ? norm(e.textContent) === norm(txt)
+              : e.textContent.includes(txt)
+            )
+          if (el) { el.click(); return true }
+          return false
+        }, text, exact).catch(() => false)
+        if (clicked) return true
+      }
+      await SLEEP(300)
+    }
+    return false
+  }
+
   async _applyTemplate() {
     // 우측상단 템플릿 버튼 클릭
     const templateClicked = await this.page.evaluate(() => {
@@ -81,44 +103,18 @@ class NaverInput {
     if (!templateClicked) throw new Error('템플릿 버튼을 찾지 못했습니다')
     await SLEEP(1000)
 
-    // '내 템플릿' 탭 클릭 (공백 포함/미포함 모두 처리)
-    const myTabClicked = await this.page.evaluate(() => {
-      const el = Array.from(document.querySelectorAll('button, [role="tab"], li, a, span'))
-        .find(e => e.textContent.trim().replace(/\s+/g, '') === '내템플릿')
-      if (el) { el.click(); return true }
-      return false
-    })
+    // '내 템플릿' 탭 클릭 — 모든 프레임 순회, 공백 정규화
+    const myTabClicked = await this._clickByText('내 템플릿', { timeout: 4000, exact: true })
     if (!myTabClicked) throw new Error('내 템플릿 탭을 찾지 못했습니다')
     await SLEEP(800)
 
-    // 설디그래픽스 템플릿 항목 클릭
-    const templateApplied = await this.page.evaluate(() => {
-      const containerSelectors = [
-        '.se-template-list', '[class*="templateList"]', '[class*="template_list"]',
-        '[class*="templateWrap"]', '[class*="template-wrap"]', '[class*="template"]',
-      ]
-      for (const sel of containerSelectors) {
-        const containers = document.querySelectorAll(sel)
-        for (const container of containers) {
-          const items = container.querySelectorAll('li, button, a, [class*="item"], [class*="name"], span')
-          const el = Array.from(items).find(e => e.textContent.includes('설디그래픽스'))
-          if (el) { el.click(); return true }
-        }
-      }
-      const fallback = Array.from(document.querySelectorAll('li, button, a'))
-        .find(e => e.textContent.trim() === '설디그래픽스')
-      if (fallback) { fallback.click(); return true }
-      return false
-    })
+    // '설디그래픽스' 템플릿 항목 클릭 — 모든 프레임 순회
+    const templateApplied = await this._clickByText('설디그래픽스', { timeout: 4000, exact: false })
     if (!templateApplied) throw new Error('설디그래픽스 템플릿 항목을 찾지 못했습니다')
     await SLEEP(800)
 
-    // 적용 확인 다이얼로그 처리
-    await this.page.evaluate(() => {
-      const confirmBtn = Array.from(document.querySelectorAll('button'))
-        .find(e => ['적용', '확인', '사용', 'OK'].includes(e.textContent.trim()))
-      if (confirmBtn) confirmBtn.click()
-    })
+    // 적용 확인 다이얼로그 처리 (뜨는 경우에만)
+    await this._clickByText('적용', { timeout: 1500, exact: true }).catch(() => {})
     await SLEEP(1000)
   }
 
