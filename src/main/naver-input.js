@@ -115,11 +115,14 @@ class NaverInput {
                (await titleFrame.$('[data-ce-name="title"]'))
     if (!el) throw new Error('제목 요소 없음')
 
-    // el.boundingBox()는 뷰포트 기준 절대 좌표 → page.mouse.click으로 clickability 체크 우회
+    await el.scrollIntoView()
+    await SLEEP(100)
     const box = await el.boundingBox()
     if (!box) throw new Error('제목 요소 좌표 없음')
+
+    this.log('log', { level: 'info', msg: `  제목 클릭 좌표: (${Math.round(box.x + 10)}, ${Math.round(box.y + 5)}) 크기 ${Math.round(box.width)}x${Math.round(box.height)}` })
     await this.page.mouse.click(box.x + 10, box.y + 5, { clickCount: 3 })
-    await SLEEP(100)
+    await SLEEP(150)
     await this.page.keyboard.type(title, { delay: 12 })
   }
 
@@ -145,18 +148,17 @@ class NaverInput {
   }
 
   async _goToBodyStart({ titleFrame, bodyFrame }) {
-    // 제목 요소 하단 아래를 클릭 → 본문 영역 포커스
-    // (Ctrl+Home 은 같은 프레임일 때 제목 처음으로 돌아가므로 사용 안함)
     const titleEl = (await titleFrame.$('.se-title-text')) ||
                     (await titleFrame.$('[data-ce-name="title"]'))
 
     if (titleEl) {
       const titleBox = await titleEl.boundingBox()
       if (titleBox) {
-        await this.page.mouse.click(
-          titleBox.x + titleBox.width / 2,
-          titleBox.y + titleBox.height + 40
-        )
+        // 구분선 아래 본문 영역: +40은 구분선에 걸릴 수 있으므로 +80 사용
+        const clickX = titleBox.x + titleBox.width / 2
+        const clickY = titleBox.y + titleBox.height + 80
+        this.log('log', { level: 'info', msg: `  본문 클릭 좌표: (${Math.round(clickX)}, ${Math.round(clickY)})` })
+        await this.page.mouse.click(clickX, clickY)
         await SLEEP(200)
         return
       }
