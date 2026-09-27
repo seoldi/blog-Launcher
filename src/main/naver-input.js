@@ -17,6 +17,10 @@ class NaverInput {
     const frames = await this._findEditorFrames()
     this.log('log', { level: 'ok', msg: '에디터 프레임 확인 ✓' })
 
+    this.log('log', { level: 'info', msg: '템플릿 적용 중...' })
+    await this._applyTemplate()
+    this.log('log', { level: 'ok', msg: '설디그래픽스 템플릿 적용 ✓' })
+
     this.log('log', { level: 'info', msg: '제목 입력 중...' })
     await this._inputTitle(frames, title)
     await SLEEP(400)
@@ -61,6 +65,52 @@ class NaverInput {
       this.log('log', { level: 'info', msg: '태그 입력 중...' })
       await this._inputTags(tags)
     }
+  }
+
+  async _applyTemplate() {
+    // 우측상단 템플릿 버튼 클릭
+    const templateClicked = await this.page.evaluate(() => {
+      const el = Array.from(document.querySelectorAll('button, [role="button"], a, span'))
+        .find(e => {
+          const txt = e.textContent.trim()
+          return txt === '템플릿' || e.getAttribute('aria-label') === '템플릿' || e.title === '템플릿'
+        })
+      if (el) { el.click(); return true }
+      return false
+    })
+    if (!templateClicked) throw new Error('템플릿 버튼을 찾지 못했습니다')
+    await SLEEP(1000)
+
+    // 설디그래픽스 템플릿 항목 클릭
+    const templateApplied = await this.page.evaluate(() => {
+      const containerSelectors = [
+        '.se-template-list', '[class*="templateList"]', '[class*="template_list"]',
+        '[class*="templateWrap"]', '[class*="template-wrap"]', '[class*="template"]',
+      ]
+      for (const sel of containerSelectors) {
+        const containers = document.querySelectorAll(sel)
+        for (const container of containers) {
+          const items = container.querySelectorAll('li, button, a, [class*="item"], [class*="name"], span')
+          const el = Array.from(items).find(e => e.textContent.includes('설디그래픽스'))
+          if (el) { el.click(); return true }
+        }
+      }
+      // fallback: 전체 DOM에서 텍스트 탐색
+      const fallback = Array.from(document.querySelectorAll('li, button, a'))
+        .find(e => e.textContent.trim() === '설디그래픽스')
+      if (fallback) { fallback.click(); return true }
+      return false
+    })
+    if (!templateApplied) throw new Error('설디그래픽스 템플릿 항목을 찾지 못했습니다')
+    await SLEEP(800)
+
+    // 적용 확인 다이얼로그가 뜨는 경우 처리 ("적용" 또는 "확인" 버튼)
+    await this.page.evaluate(() => {
+      const confirmBtn = Array.from(document.querySelectorAll('button'))
+        .find(e => ['적용', '확인', '사용', 'OK'].includes(e.textContent.trim()))
+      if (confirmBtn) confirmBtn.click()
+    })
+    await SLEEP(1000)
   }
 
   async _findEditorFrames(retries = 3) {
