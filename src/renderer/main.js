@@ -236,7 +236,7 @@ genBtn.addEventListener('click', async () => {
   }
 })
 
-function renderDraftResult() {
+function renderDraftResult(skipSave = false) {
   if (!draft) return
   document.getElementById('draft-empty').classList.add('hidden')
   document.getElementById('draft-result').classList.remove('hidden')
@@ -265,7 +265,7 @@ function renderDraftResult() {
     tagList.appendChild(chip)
   })
 
-  saveToVault(draft)
+  if (!skipSave) saveToVault(draft)
   updateInputPreview()
 }
 
@@ -327,7 +327,7 @@ function renderVault() {
       const item = loadVault().find(v => v.id === +btn.dataset.id)
       if (!item) return
       draft = item
-      renderDraftResult()
+      renderDraftResult(true)
       document.querySelector('.tab-btn[data-tab="photo"]').click()
     })
   })

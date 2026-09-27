@@ -166,18 +166,28 @@ class NaverInput {
 
   async _inputTags(tags) {
     try {
+      // 발행 버튼 클릭 → 발행 패널 열기
+      const publishBtn = await this.page.waitForSelector(
+        '.publish_btn, .btn_publish, [class*="publish"]:not([class*="cancel"]):not([class*="close"]):not([class*="prev"]), button[data-log-actionid*="publish"]',
+        { timeout: 4000 }
+      )
+      await publishBtn.click()
+      await SLEEP(800)
+
+      // 발행 패널 내 태그 입력창
       const tagInput = await this.page.waitForSelector(
-        '.se-tag-input input, input[placeholder*="태그"], input[class*="tag"]',
-        { timeout: 3000 }
+        '.se-tag-input input, input[placeholder*="태그"], input[class*="tag"], .wrap_tag input, .tag_input input',
+        { timeout: 4000 }
       )
       for (const tag of tags) {
         await tagInput.click()
         await tagInput.type(tag, { delay: 20 })
         await this.page.keyboard.press('Enter')
-        await SLEEP(200)
+        await SLEEP(300)
       }
-    } catch {
-      this.log('log', { level: 'warn', msg: '태그 영역을 찾지 못해 건너뜀' })
+      this.log('log', { level: 'ok', msg: `태그 ${tags.length}개 입력 ✓ — 발행 패널 확인 후 직접 발행하세요` })
+    } catch (e) {
+      this.log('log', { level: 'warn', msg: `태그 입력 건너뜀: ${e.message}` })
     }
   }
 }
