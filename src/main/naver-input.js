@@ -34,18 +34,23 @@ class NaverInput {
       Math.floor((i + 1) * paras.length / (m + 1))
     )
 
-    await this._enterBody(frames)
+    // 본문 맨 위로 이동 — 템플릿 기존 내용 위에 초안 삽입
+    await this._goToBodyStart(frames)
 
     if (paras.length > 0) {
       for (let p = 0; p < paras.length; p++) {
-        if (p > 0) await this._enterBody(frames)
+        if (p > 0) {
+          await this.page.keyboard.press('Enter')
+          await SLEEP(200)
+        }
         await this._typeInBody(frames, paras[p])
         await SLEEP(200)
 
         for (let i = 0; i < m; i++) {
           if (insertAfterPara[i] === p) {
             this.log('log', { level: 'info', msg: `이미지 삽입 중 (${i + 1}/${m})` })
-            await this._enterBody(frames)
+            await this.page.keyboard.press('Enter')
+            await SLEEP(200)
             await this._insertImage(frames, imagePaths[i])
             this.log('log', { level: 'ok', msg: `  이미지 ${i + 1} ✓` })
           }
@@ -55,11 +60,18 @@ class NaverInput {
       // 본문 없이 이미지만 있는 경우
       for (let i = 0; i < m; i++) {
         this.log('log', { level: 'info', msg: `이미지 삽입 중 (${i + 1}/${m})` })
-        if (i > 0) await this._enterBody(frames)
+        if (i > 0) {
+          await this.page.keyboard.press('Enter')
+          await SLEEP(200)
+        }
         await this._insertImage(frames, imagePaths[i])
         this.log('log', { level: 'ok', msg: `  이미지 ${i + 1} ✓` })
       }
     }
+
+    // 초안과 템플릿 내용 사이 여백
+    await this.page.keyboard.press('Enter')
+    await SLEEP(200)
 
     if (tags?.length) {
       this.log('log', { level: 'info', msg: '태그 입력 중...' })
@@ -162,13 +174,23 @@ class NaverInput {
     await this.page.keyboard.type(title, { delay: 12 })
   }
 
-  async _enterBody({ bodyFrame }) {
+  async _goToBodyStart({ bodyFrame }) {
     await bodyFrame.evaluate(() => {
-      document.body.click()
       document.body.focus()
+      try {
+        const range = document.createRange()
+        range.selectNodeContents(document.body)
+        range.collapse(true) // 맨 앞으로
+        const sel = window.getSelection()
+        sel.removeAllRanges()
+        sel.addRange(range)
+      } catch {}
     })
     await SLEEP(100)
-    await this.page.keyboard.press('Enter')
+    // Ctrl+Home 으로 본문 최상단 확정
+    await this.page.keyboard.down('Control')
+    await this.page.keyboard.press('Home')
+    await this.page.keyboard.up('Control')
     await SLEEP(200)
   }
 
@@ -208,11 +230,9 @@ class NaverInput {
     clipboard.writeImage(ni)
     await SLEEP(200)
 
-    await bodyFrame.evaluate(() => {
-      document.body.click()
-      document.body.focus()
-    })
-    await SLEEP(200)
+    // click() 없이 focus()만 — 커서 위치 유지
+    await bodyFrame.evaluate(() => document.body.focus())
+    await SLEEP(100)
     await this.page.keyboard.down('Control')
     await this.page.keyboard.press('v')
     await this.page.keyboard.up('Control')
