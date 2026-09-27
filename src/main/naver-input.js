@@ -81,14 +81,14 @@ class NaverInput {
     if (!templateClicked) throw new Error('템플릿 버튼을 찾지 못했습니다')
     await SLEEP(1000)
 
-    // '내템플릿' 탭 클릭
+    // '내 템플릿' 탭 클릭 (공백 포함/미포함 모두 처리)
     const myTabClicked = await this.page.evaluate(() => {
       const el = Array.from(document.querySelectorAll('button, [role="tab"], li, a, span'))
-        .find(e => e.textContent.trim() === '내템플릿')
+        .find(e => e.textContent.trim().replace(/\s+/g, '') === '내템플릿')
       if (el) { el.click(); return true }
       return false
     })
-    if (!myTabClicked) throw new Error('내템플릿 탭을 찾지 못했습니다')
+    if (!myTabClicked) throw new Error('내 템플릿 탭을 찾지 못했습니다')
     await SLEEP(800)
 
     // 설디그래픽스 템플릿 항목 클릭
