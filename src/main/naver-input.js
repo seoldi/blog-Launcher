@@ -120,19 +120,12 @@ class NaverInput {
   }
 
   async _goToBodyStart({ bodyFrame }) {
-    await bodyFrame.evaluate(() => {
-      document.body.focus()
-      try {
-        const range = document.createRange()
-        range.selectNodeContents(document.body)
-        range.collapse(true) // 맨 앞으로
-        const sel = window.getSelection()
-        sel.removeAllRanges()
-        sel.addRange(range)
-      } catch {}
-    })
+    // ElementHandle.click()은 CDP 마우스 이벤트 → 키보드 포커스가 bodyFrame으로 이전됨
+    const bodyEl = await bodyFrame.$('body')
+    if (!bodyEl) throw new Error('본문 body 요소 없음')
+    await bodyEl.click({ offset: { x: 10, y: 10 } })  // 상단 근처 클릭
     await SLEEP(100)
-    // Ctrl+Home 으로 본문 최상단 확정
+    // Ctrl+Home 으로 맨 앞 확정
     await this.page.keyboard.down('Control')
     await this.page.keyboard.press('Home')
     await this.page.keyboard.up('Control')
@@ -175,9 +168,7 @@ class NaverInput {
     clipboard.writeImage(ni)
     await SLEEP(200)
 
-    // click() 없이 focus()만 — 커서 위치 유지
-    await bodyFrame.evaluate(() => document.body.focus())
-    await SLEEP(100)
+    // CDP 포커스는 _goToBodyStart 이후 유지됨 — 별도 포커스 불필요
     await this.page.keyboard.down('Control')
     await this.page.keyboard.press('v')
     await this.page.keyboard.up('Control')
