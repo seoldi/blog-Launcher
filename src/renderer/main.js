@@ -101,6 +101,20 @@ function addFiles(files) {
   }
 }
 
+function showImageNotice(msg) {
+  let el = document.getElementById('image-notice')
+  if (!el) {
+    el = document.createElement('p')
+    el.id = 'image-notice'
+    el.style.cssText = 'color:var(--orange,#F97316);font-size:12px;margin:6px 0 0;text-align:center'
+    imageDrop.insertAdjacentElement('afterend', el)
+  }
+  el.textContent = msg
+  el.style.display = 'block'
+  clearTimeout(el._t)
+  el._t = setTimeout(() => { el.style.display = 'none' }, 5000)
+}
+
 function renderImageList() {
   imageList.innerHTML = ''
   selectedImages.forEach((img, i) => {
@@ -329,6 +343,7 @@ function renderVault() {
       draft = item
       renderDraftResult(true)
       document.querySelector('.tab-btn[data-tab="photo"]').click()
+      if (!selectedImages.length) showImageNotice('이미지는 보관되지 않습니다 — 직접 추가하세요')
     })
   })
 }
