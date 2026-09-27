@@ -114,7 +114,11 @@ class NaverInput {
     const el = (await titleFrame.$('.se-title-text')) ||
                (await titleFrame.$('[data-ce-name="title"]'))
     if (!el) throw new Error('제목 요소 없음')
-    await el.click({ clickCount: 3 })  // 트리플클릭 → 기존 텍스트 전체 선택
+
+    // el.boundingBox()는 뷰포트 기준 절대 좌표 → page.mouse.click으로 clickability 체크 우회
+    const box = await el.boundingBox()
+    if (!box) throw new Error('제목 요소 좌표 없음')
+    await this.page.mouse.click(box.x + 10, box.y + 5, { clickCount: 3 })
     await SLEEP(100)
     await this.page.keyboard.type(title, { delay: 12 })
   }
