@@ -81,6 +81,16 @@ class NaverInput {
     if (!templateClicked) throw new Error('템플릿 버튼을 찾지 못했습니다')
     await SLEEP(1000)
 
+    // '내템플릿' 탭 클릭
+    const myTabClicked = await this.page.evaluate(() => {
+      const el = Array.from(document.querySelectorAll('button, [role="tab"], li, a, span'))
+        .find(e => e.textContent.trim() === '내템플릿')
+      if (el) { el.click(); return true }
+      return false
+    })
+    if (!myTabClicked) throw new Error('내템플릿 탭을 찾지 못했습니다')
+    await SLEEP(800)
+
     // 설디그래픽스 템플릿 항목 클릭
     const templateApplied = await this.page.evaluate(() => {
       const containerSelectors = [
@@ -95,7 +105,6 @@ class NaverInput {
           if (el) { el.click(); return true }
         }
       }
-      // fallback: 전체 DOM에서 텍스트 탐색
       const fallback = Array.from(document.querySelectorAll('li, button, a'))
         .find(e => e.textContent.trim() === '설디그래픽스')
       if (fallback) { fallback.click(); return true }
@@ -104,7 +113,7 @@ class NaverInput {
     if (!templateApplied) throw new Error('설디그래픽스 템플릿 항목을 찾지 못했습니다')
     await SLEEP(800)
 
-    // 적용 확인 다이얼로그가 뜨는 경우 처리 ("적용" 또는 "확인" 버튼)
+    // 적용 확인 다이얼로그 처리
     await this.page.evaluate(() => {
       const confirmBtn = Array.from(document.querySelectorAll('button'))
         .find(e => ['적용', '확인', '사용', 'OK'].includes(e.textContent.trim()))
