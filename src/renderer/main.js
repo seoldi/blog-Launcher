@@ -62,8 +62,8 @@ toggleBtn.addEventListener('click', async () => {
   if (browserOn) {
     await window.api.closeBrowser()
   } else {
-    const res = await window.api.launchBrowser()
-    if (!res.ok) alert(`Chrome 실행 오류: ${res.error}`)
+    const res = await window.api.launchBrowser({ blogId: cfg.blogId })
+    if (!res.ok) alert(`에디터 실행 오류: ${res.error}`)
   }
   await refreshBrowserStatus()
   toggleBtn.disabled = false
