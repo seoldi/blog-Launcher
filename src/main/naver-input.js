@@ -144,16 +144,27 @@ class NaverInput {
     return false
   }
 
-  async _goToBodyStart({ bodyFrame }) {
-    const clicked = await this._focusBodyFrame(bodyFrame)
-    if (!clicked) {
-      // fallback: JS 이벤트 (CDP 포커스 보장 안됨)
-      await bodyFrame.evaluate(() => { document.body.click(); document.body.focus() })
+  async _goToBodyStart({ titleFrame, bodyFrame }) {
+    // 제목 요소 하단 아래를 클릭 → 본문 영역 포커스
+    // (Ctrl+Home 은 같은 프레임일 때 제목 처음으로 돌아가므로 사용 안함)
+    const titleEl = (await titleFrame.$('.se-title-text')) ||
+                    (await titleFrame.$('[data-ce-name="title"]'))
+
+    if (titleEl) {
+      const titleBox = await titleEl.boundingBox()
+      if (titleBox) {
+        await this.page.mouse.click(
+          titleBox.x + titleBox.width / 2,
+          titleBox.y + titleBox.height + 40
+        )
+        await SLEEP(200)
+        return
+      }
     }
-    await SLEEP(100)
-    await this.page.keyboard.down('Control')
-    await this.page.keyboard.press('Home')
-    await this.page.keyboard.up('Control')
+
+    // fallback: iframe 좌표 클릭
+    const clicked = await this._focusBodyFrame(bodyFrame)
+    if (!clicked) await bodyFrame.evaluate(() => { document.body.click(); document.body.focus() })
     await SLEEP(200)
   }
 
