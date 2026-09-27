@@ -24,50 +24,37 @@ class NaverInput {
     const paras = body.split(/\n+/).map(p => p.trim()).filter(Boolean)
     const m     = imagePaths.length
 
-    // 이미지를 단락 사이에 균등 분배
-    // 이미지 i는 paras[floor((i+1)*n/(m+1))] 뒤에 삽입
     const insertAfterPara = imagePaths.map((_, i) =>
       Math.floor((i + 1) * paras.length / (m + 1))
     )
 
-    // 본문 맨 위로 이동 — 템플릿 기존 내용 위에 초안 삽입
-    await this._goToBodyStart(frames)
+    this.log('log', { level: 'info', msg: '본문 영역 진입 중...' })
+    await this._focusBody(frames)
+    await SLEEP(300)
 
     if (paras.length > 0) {
       for (let p = 0; p < paras.length; p++) {
-        if (p > 0) {
-          await this.page.keyboard.press('Enter')
-          await SLEEP(200)
-        }
+        if (p > 0) await this._insertParagraph(frames)
         await this._typeInBody(frames, paras[p])
-        await SLEEP(200)
+        await SLEEP(150)
 
         for (let i = 0; i < m; i++) {
           if (insertAfterPara[i] === p) {
             this.log('log', { level: 'info', msg: `이미지 삽입 중 (${i + 1}/${m})` })
-            await this.page.keyboard.press('Enter')
-            await SLEEP(200)
+            await this._insertParagraph(frames)
             await this._insertImage(frames, imagePaths[i])
             this.log('log', { level: 'ok', msg: `  이미지 ${i + 1} ✓` })
           }
         }
       }
     } else {
-      // 본문 없이 이미지만 있는 경우
       for (let i = 0; i < m; i++) {
         this.log('log', { level: 'info', msg: `이미지 삽입 중 (${i + 1}/${m})` })
-        if (i > 0) {
-          await this.page.keyboard.press('Enter')
-          await SLEEP(200)
-        }
+        if (i > 0) await this._insertParagraph(frames)
         await this._insertImage(frames, imagePaths[i])
         this.log('log', { level: 'ok', msg: `  이미지 ${i + 1} ✓` })
       }
     }
-
-    // 초안과 템플릿 내용 사이 여백
-    await this.page.keyboard.press('Enter')
-    await SLEEP(200)
 
     if (tags?.length) {
       this.log('log', { level: 'info', msg: '태그 입력 중...' })
@@ -110,87 +97,91 @@ class NaverInput {
     throw new Error('SE3 에디터 프레임을 찾지 못했습니다. 블로그 쓰기 페이지가 열려 있는지 확인하세요.')
   }
 
+  // execCommand 기반 제목 입력 — CDP 키보드/좌표 불필요
   async _inputTitle({ titleFrame }, title) {
-    const el = (await titleFrame.$('.se-title-text')) ||
-               (await titleFrame.$('[data-ce-name="title"]'))
-    if (!el) throw new Error('제목 요소 없음')
+    const ok = await titleFrame.evaluate((t) => {
+      const el = document.querySelector('.se-title-text') ||
+                 document.querySelector('[data-ce-name="title"]')
+      if (!el) return false
+      el.focus()
+      // 기존 내용 전체 선택 후 새 제목으로 교체
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      const sel = window.getSelection()
+      sel.removeAllRanges()
+      sel.addRange(range)
+      document.execCommand('insertText', false, t)
+      return true
+    }, title)
+    if (!ok) throw new Error('제목 요소 없음')
+  }
 
-    await el.scrollIntoView()
+  // execCommand 기반 본문 포커스 — Selection API로 커서를 본문 앞에 배치
+  async _focusBody({ titleFrame, bodyFrame }) {
+    const isSameFrame = titleFrame === bodyFrame
+
+    if (isSameFrame) {
+      // 같은 프레임: 제목 요소 다음 형제(본문 첫 단락)에 포커스
+      await titleFrame.evaluate(() => {
+        const titleEl = document.querySelector('.se-title-text') ||
+                        document.querySelector('[data-ce-name="title"]')
+        const bodyEl = titleEl?.nextElementSibling || document.body
+        bodyEl.focus()
+        try {
+          const range = document.createRange()
+          range.setStart(bodyEl, 0)
+          range.collapse(true)
+          const sel = window.getSelection()
+          sel.removeAllRanges()
+          sel.addRange(range)
+        } catch {}
+      })
+    } else {
+      // 별개 프레임: bodyFrame에 직접 포커스
+      await bodyFrame.evaluate(() => {
+        document.body.focus()
+        try {
+          const range = document.createRange()
+          range.setStart(document.body, 0)
+          range.collapse(true)
+          const sel = window.getSelection()
+          sel.removeAllRanges()
+          sel.addRange(range)
+        } catch {}
+      })
+    }
+  }
+
+  // execCommand로 단락 삽입
+  async _insertParagraph({ bodyFrame }) {
+    await bodyFrame.evaluate(() => {
+      document.execCommand('insertParagraph', false, null)
+    })
     await SLEEP(100)
-    const box = await el.boundingBox()
-    if (!box) throw new Error('제목 요소 좌표 없음')
-
-    this.log('log', { level: 'info', msg: `  제목 클릭 좌표: (${Math.round(box.x + 10)}, ${Math.round(box.y + 5)}) 크기 ${Math.round(box.width)}x${Math.round(box.height)}` })
-    await this.page.mouse.click(box.x + 10, box.y + 5, { clickCount: 3 })
-    await SLEEP(150)
-    await this.page.keyboard.type(title, { delay: 12 })
   }
 
-  // bodyFrame에 해당하는 iframe의 절대 좌표를 찾아 page.mouse.click()
-  // ElementHandle.click()은 v22 clickability 체크에 막히므로 이 방법 사용
-  async _focusBodyFrame(bodyFrame, ctx = this.page) {
-    const handles = await ctx.$$('iframe, frame').catch(() => [])
-    for (const handle of handles) {
-      try {
-        const frame = await handle.contentFrame()
-        if (!frame) continue
-        if (frame === bodyFrame) {
-          const box = await handle.boundingBox()
-          if (box) {
-            await this.page.mouse.click(box.x + 20, box.y + 20)
-            return true
-          }
-        }
-        if (await this._focusBodyFrame(bodyFrame, frame)) return true
-      } catch {}
-    }
-    return false
-  }
-
-  async _goToBodyStart({ titleFrame, bodyFrame }) {
-    const titleEl = (await titleFrame.$('.se-title-text')) ||
-                    (await titleFrame.$('[data-ce-name="title"]'))
-
-    if (titleEl) {
-      const titleBox = await titleEl.boundingBox()
-      if (titleBox) {
-        // 구분선 아래 본문 영역: +40은 구분선에 걸릴 수 있으므로 +80 사용
-        const clickX = titleBox.x + titleBox.width / 2
-        const clickY = titleBox.y + titleBox.height + 80
-        this.log('log', { level: 'info', msg: `  본문 클릭 좌표: (${Math.round(clickX)}, ${Math.round(clickY)})` })
-        await this.page.mouse.click(clickX, clickY)
-        await SLEEP(200)
-        return
-      }
-    }
-
-    // fallback: iframe 좌표 클릭
-    const clicked = await this._focusBodyFrame(bodyFrame)
-    if (!clicked) await bodyFrame.evaluate(() => { document.body.click(); document.body.focus() })
-    await SLEEP(200)
-  }
-
+  // execCommand 기반 본문 타이핑 — 볼드(**text**) 포함
   async _typeInBody({ bodyFrame }, text) {
     const parts = text.split(/(\*\*[^*]+\*\*)/)
     for (const part of parts) {
       if (!part) continue
       if (part.startsWith('**') && part.endsWith('**')) {
         const bold = part.slice(2, -2)
-        await this.page.keyboard.down('Control')
-        await this.page.keyboard.press('b')
-        await this.page.keyboard.up('Control')
-        await SLEEP(50)
-        await this.page.keyboard.type(bold, { delay: 8 })
-        await this.page.keyboard.down('Control')
-        await this.page.keyboard.press('b')
-        await this.page.keyboard.up('Control')
-        await SLEEP(50)
+        await bodyFrame.evaluate((t) => {
+          document.execCommand('bold', false, null)
+          document.execCommand('insertText', false, t)
+          document.execCommand('bold', false, null)
+        }, bold)
       } else {
-        await this.page.keyboard.type(part, { delay: 8 })
+        await bodyFrame.evaluate((t) => {
+          document.execCommand('insertText', false, t)
+        }, part)
       }
+      await SLEEP(30)
     }
   }
 
+  // 이미지 삽입 — 클립보드 붙여넣기 (CDP 필요: body frame 중앙 클릭)
   async _insertImage({ bodyFrame }, imageData) {
     if (!imageData) {
       this.log('log', { level: 'warn', msg: '이미지 데이터 없음' })
@@ -206,16 +197,41 @@ class NaverInput {
     clipboard.writeImage(ni)
     await SLEEP(200)
 
-    // CDP 포커스는 _goToBodyStart 이후 유지됨 — 별도 포커스 불필요
+    // 이미지 붙여넣기는 CDP Ctrl+V 필요 → body frame 중앙을 클릭해 CDP 포커스 확보
+    await this._cdpFocusBody(bodyFrame)
+    await SLEEP(150)
     await this.page.keyboard.down('Control')
     await this.page.keyboard.press('v')
     await this.page.keyboard.up('Control')
     await SLEEP(1500)
   }
 
+  // 이미지 붙여넣기 전용 CDP 포커스 — body frame 중앙 클릭
+  async _cdpFocusBody(bodyFrame, ctx = this.page) {
+    const handles = await ctx.$$('iframe, frame').catch(() => [])
+    for (const handle of handles) {
+      try {
+        const frame = await handle.contentFrame()
+        if (!frame) continue
+        if (frame === bodyFrame) {
+          const box = await handle.boundingBox()
+          if (box) {
+            // 중앙 클릭 — 제목 영역(상단)을 피함
+            await this.page.mouse.click(
+              box.x + box.width / 2,
+              box.y + box.height / 2
+            )
+            return true
+          }
+        }
+        if (await this._cdpFocusBody(bodyFrame, frame)) return true
+      } catch {}
+    }
+    return false
+  }
+
   async _inputTags(tags) {
     try {
-      // 발행 버튼 클릭 → 발행 패널 열기
       const publishBtn = await this.page.waitForSelector(
         '.publish_btn, .btn_publish, [class*="publish"]:not([class*="cancel"]):not([class*="close"]):not([class*="prev"]), button[data-log-actionid*="publish"]',
         { timeout: 4000 }
@@ -223,7 +239,6 @@ class NaverInput {
       await publishBtn.click()
       await SLEEP(800)
 
-      // 발행 패널 내 태그 입력창
       const tagInput = await this.page.waitForSelector(
         '.se-tag-input input, input[placeholder*="태그"], input[class*="tag"], .wrap_tag input, .tag_input input',
         { timeout: 4000 }
